@@ -54,6 +54,9 @@ for column in df.columns:
 # Apply the clean_cell_data function to every element in the DataFrame to remove units from data cells
 df = df.applymap(clean_cell_data)
 
+# Save the dataframe with remove units to be used to determine which dataframe is best
+#df.to_csv('Removed_Units_CEC_Data_2021.csv')
+df.to_csv('CEC_Data_2021_cleaned.csv')
 #Forward fill with a limit of 2
 df = df.fillna(method='ffill', limit=2)
 
@@ -109,8 +112,8 @@ print("Total Gas Flow Rate:", total_gas_flow_rate)
 
 print(df)
 # Save the cleaned dataframe to a new CSV file
-df.to_csv('Cleaned_CEC_Data_2021.csv')
+#df.to_csv('Cleaned_CEC_Data_2021.csv')
 
 boiler_2_columns = [column for column in df.columns if "B-2" in column or column == 'UBC Temp (°C)' or column == 'UBC Humidity (%RH)']
 boiler_2_df = df[boiler_2_columns].dropna()
-boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
+#boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
