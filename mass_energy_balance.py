@@ -412,7 +412,7 @@ plt.show()
 df['mole fraction O2 flue gas'] = y_O2_flue
 df['mole fraction N2 flue gas'] = y_N2_flue
 df['mole fraction H2O flue gas'] = y_H2O_flue
-df['mole fraction CO2 flue gas'] = y_CO2_flue
+df['mole fraction CO2 flue  gas'] = y_CO2_flue
 plt.figure(figsize=(10, 6))
 
 # Filter out values below zero using np.maximum
