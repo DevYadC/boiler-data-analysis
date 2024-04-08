@@ -72,13 +72,13 @@ print(f'Air in mole fraction water: {y_H2O_air}, mole fraction oxygen: {y_O2_air
 
 #***Determine the mole fractions of flue gas using atomic carbon, nitrogen, oxygen, and hydrogen balances***
 # Given values
-fuel_molar_flowrate=molar_flowrate(fuel_pressure, fuel_volumetric_flowrate, R, T) #(mol/h)
+fuel_molar_flowrate=molar_flowrate(fuel_pressure, fuel_volumetric_flowrate, R, T) / 3600 #(mol/s)
 percent_CH4 = 0.95
 percent_C2H6 = 0.05
 
 # Calculate the molar flow rates of CH4 and C2H6
-flow_rate_CH4 = percent_CH4 * fuel_molar_flowrate  # mol/h
-flow_rate_C2H6 = percent_C2H6 * fuel_molar_flowrate  # mol/h
+flow_rate_CH4 = percent_CH4 * fuel_molar_flowrate  # mol/s
+flow_rate_C2H6 = percent_C2H6 * fuel_molar_flowrate  # mol/s
 
 #Methane: CH4 + 2O2 -> CO2 + 2H20 
 #Ethane: 2C2H6 + 7O2 -> 4CO2 + 6H2O
@@ -161,7 +161,7 @@ def calculate_heat_transfer(enthalpy, molar_flow):
 ##heat capacity coefficients water
 a_H2O=7.243E1
 b_H2O=1.039E-2
-c_H2O=-1.497E-6
+c_H2O=-1.497E-6 
 d_H2O=0
 ##convert water flow rate from L/s -> mol/s
 density_H2O= 1000 # g/L
@@ -222,7 +222,7 @@ print(f'Enthalpy of fuel mixture J/mol: {H_fuel}')
 deltaHf_CO2 = -393.5E3 # value for ΔHf° of CO2 J/mol
 deltaHf_H2O = -248.1E3 # value for ΔHf° of H2O vapor J/mol
 deltaHf_CH4 = -74.6E3# value for ΔHf° of CH4 J/mol
-deltaHf_C2H6 = -83.75# value for ΔHf° of C2H6 J/mol
+deltaHf_C2H6 = -83.75E3# value for ΔHf° of C2H6 J/mol
 deltaHf_O2 = 0 # ΔHf° of O2 is zero since it's an element in its standard state 
 
 # derived from combustion reactions of CH4 and C2H6
@@ -400,10 +400,11 @@ filtered_df = df[(df['Campus Energy Centre Boiler B-2 Gas Flow Rate (kmol/h)'] >
                  (df['Campus Energy Centre Boiler B-2 Gas Flow Rate (kmol/h)'] > 0)]
 
 # Plotting
-plt.scatter(filtered_df.index, filtered_df['Campus Energy Centre Boiler B-2 Gas Flow Rate (kmol/h)'])
-plt.xlabel("Time")
-plt.ylabel("Flowrate of Flue Gas (kmol/hr)")
-plt.title("Flue Gas Flow Rate (kmol/hr)")
+plt.plot(filtered_df.index, filtered_df['Campus Energy Centre Boiler B-2 Gas Flow Rate (kmol/h)'], label = 'Campus Energy Centre Boiler B-2 Gas Flow Rate (kmol/h)')
+plt.plot(df['UBC Temp (°C)'].index, df['UBC Temp (°C)'] , label = 'UBC Temp (°C)')
+plt.xlabel("TimeStamp Index")
+plt.title("Flue Gas Flow Rate (kmol/hr) and UBC Temp  (°C)")
+plt.legend()
 plt.show()
 
 #***flue gas composition
@@ -420,7 +421,7 @@ plt.plot(df.index, np.maximum(df['mole fraction N2 flue gas'], 0), label='N2 Mol
 plt.plot(df.index, np.maximum(df['mole fraction H2O flue gas'], 0), label='H2O Mole Fraction')
 plt.plot(df.index, np.maximum(df['mole fraction CO2 flue gas'], 0), label='CO2 Mole Fraction')
 
-plt.xlabel("Time")
+plt.xlabel("TimeStamp Index")
 plt.ylabel("Mole Fraction")
 plt.title("Mole Fractions of Components in Flue Gas")
 plt.legend()
@@ -460,7 +461,7 @@ plt.plot(filtered_cold_water.index, filtered_cold_water['cold water heat transfe
 plt.plot(filtered_hot_water.index, filtered_hot_water['hot water heat transfer kJ/s'], label='Hot Water Heat Transfer (kJ/s)')
 plt.plot(filtered_heat_loss.index, filtered_heat_loss['heat loss furnace/boiler kJ/s'], label='Heat Loss Furnace/Boiler (kJ/s)')
 
-plt.xlabel("Time or Index")
+plt.xlabel("Time")
 plt.ylabel("Energy Transfer Rate (kJ/s)")
 plt.title("Energy Transfer Rates for Boiler Over Time (kJ/s)")
 plt.legend()
@@ -474,3 +475,39 @@ plt.show()
 
 
 #******Boiler efficiency*******
+#use eqn: efficiency = molar flow water * (enthalpy hot water - enthalpy cold water) / (molar flow fuel * enthalpy combustion of fuel)
+# Assuming df contains your data
+efficiency = abs(W * (H_hw - H_cw) / (fuel_molar_flowrate * H_combustion_fuel)) * 100  # efficiency in %
+df['boiler efficiency'] = efficiency
+
+# Create the initial plot and label the left y-axis
+fig, ax1 = plt.subplots()
+ax1.set_xlabel("TimeStamp index")
+ax1.set_ylabel("Calculated boiler efficiency (%)", color='tab:blue')
+ax1.plot(df['boiler efficiency'].index, df['boiler efficiency'], color='tab:blue')
+ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+# Create a second y-axis
+ax2 = ax1.twinx()  
+ax2.set_ylabel("Sensor boiler efficiency (%)", color='tab:red')  
+ax2.plot(df['Campus Energy Centre Boiler B-2 Efficiency (%)'].index, df['Campus Energy Centre Boiler B-2 Efficiency (%)'], color='tab:red')
+ax2.tick_params(axis='y', labelcolor='tab:red')
+
+# Add titles and grid
+plt.title("Boiler Efficiency Comparison")
+fig.tight_layout()  # To ensure the layout is not overlapping
+plt.grid(True)
+plt.show()
+
+
+
+
+
+
+#*****Emission estimates*******
+
+G #molar flow rate flue gas (mol/hr)
+
+NOX_factor = 50 # lb/ million cubic ft
+
+#convert mol/hr -> 
