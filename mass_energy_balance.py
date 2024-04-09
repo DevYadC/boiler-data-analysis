@@ -371,6 +371,8 @@ q_flue = (q_flue_dry + q_flue_H2O)/3600 #heat transfer flue gas (J/s)
 print(f'heat transfer flue gas (J/s): {q_flue}')
 
 
+
+
 #Determine energy loss of system (q_loss)
 #use equation: q_loss = energy_in - energy_out
 E_in = q_F + q_cw + q_A # energy in (J/s) 
@@ -378,8 +380,6 @@ E_out = q_flue + q_hw #energy out (J/s)
 
 q_loss = E_in - E_out
 print(f'heat loss (J/s): {q_loss}')
-
-
 
 
 #***Analysis questions***
@@ -412,7 +412,7 @@ plt.show()
 df['mole fraction O2 flue gas'] = y_O2_flue
 df['mole fraction N2 flue gas'] = y_N2_flue
 df['mole fraction H2O flue gas'] = y_H2O_flue
-df['mole fraction CO2 flue  gas'] = y_CO2_flue
+df['mole fraction CO2 flue gas'] = y_CO2_flue
 plt.figure(figsize=(10, 6))
 
 # Filter out values below zero using np.maximum
@@ -506,8 +506,30 @@ plt.show()
 
 #*****Emission estimates*******
 
-G #molar flow rate flue gas (mol/hr)
+gas_volumetric_flow = df['Campus Energy Centre Boiler B-2 Gas Flow Rate (m³/h)']  # Corrected column name
+NOx_Factor = ( 50 / 1E6 ) * ((453.592) / 0.02831)  # NOx factor in lb/million ft3 -> g/Btu
+power = df['Campus Energy Centre Boiler B-2 Power (MW)'] * 3.412142  # MW -> Btu/hr
+df['NOx concentration g/m3'] = power * NOx_Factor / gas_volumetric_flow * 1.88E-06  # g/m3
+df['NOx concentration sensor g/m3'] = df['Campus Energy Centre Boiler B-2 Exhaust NOx (ppm)'] * 1.88E-06 # ppm -> g/m3
 
-NOX_factor = 50 # lb/ million cubic ft
+# Plotting the calculated NOx concentration
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
-#convert mol/hr -> 
+# Plot calculated NOx concentration on the first subplot
+ax1.scatter(df.index, df['NOx concentration g/m3'], color='red', s=5)
+ax1.set_title('Calculated NOx Concentration')
+ax1.set_xlabel('TimeStamp Index')
+ax1.set_ylabel('Concentration (g/m3)')
+ax1.set_ylim(0,0.0001)
+ax1.grid(True)
+
+# Plot sensor NOx concentration on the second subplot
+ax2.scatter(df.index, df['NOx concentration sensor g/m3'], color='blue', s=5)
+ax2.set_title('Sensor NOx Concentration')
+ax2.set_xlabel('TimeStamp Index')
+ax2.set_ylabel('Concentration (g/m3)')
+ax2.grid(True)
+
+# Adjust the layout
+plt.tight_layout()
+plt.show()
