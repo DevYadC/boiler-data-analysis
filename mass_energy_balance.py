@@ -166,7 +166,7 @@ d_H2O=0
 ##convert water flow rate from L/s -> mol/s
 density_H2O= 1000 # g/L
 MW_H2O= 18 # molar weight water = 18g/mol
-W = water_flowrate*density_H2O*MW_H2O #molar flow rate water (mol/s)
+W = water_flowrate*density_H2O/MW_H2O #molar flow rate water (mol/s)
 
 ##calculate enthalpy cold water
 H_cw=calculate_enthalpy(a_H2O, b_H2O, c_H2O, d_H2O, cw_T_in, T_ref)
