@@ -116,4 +116,4 @@ print(df)
 
 boiler_2_columns = [column for column in df.columns if "B-2" in column or column == 'UBC Temp (°C)' or column == 'UBC Humidity (%RH)']
 boiler_2_df = df[boiler_2_columns].dropna()
-#boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
+boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
