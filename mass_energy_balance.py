@@ -157,7 +157,7 @@ def calculate_heat_transfer(enthalpy, molar_flow):
     return enthalpy*molar_flow
 
 
-#Determine heat transfer from cold water (q_cw) and hot water (q_hw)
+#Determine heat transfer from cold water (q_cw) and hot water (q_hw).
 ##heat capacity coefficients water
 a_H2O=7.243E1
 b_H2O=1.039E-2
