@@ -7,13 +7,9 @@ from scipy.integrate import quad
 df = pd.read_csv('B2_Cleaned_CEC_Data_2021.csv')
 
 
+# ***Mass Balance****
 
-
-
-
-#*********Mass Balance********
-
-#***Determine the molar flow rate of fuel at operating conditions***
+# **Determine the molar flow rate of fuel at operating conditions**
 
 #variables 
 fuel_volumetric_flowrate=df['Campus Energy Centre Boiler B-2 Gas Flow Rate (m³/h)'] #m³/h
@@ -34,7 +30,7 @@ print(f'Molar flowrate fuel in (moles/h): {molar_flowrate(fuel_pressure, fuel_vo
 
 
 
-#***Determine the mole fractions of wet air***
+# **Determine the mole fractions of wet air**
 #variables 
 rel_humidity=df['UBC Humidity (%RH)']/100 #relative humidity as fraction
 T=df['UBC Temp (°C)'] #°C
@@ -70,7 +66,7 @@ print(f'Air in mole fraction water: {y_H2O_air}, mole fraction oxygen: {y_O2_air
 
 
 
-#***Determine the mole fractions of flue gas using atomic carbon, nitrogen, oxygen, and hydrogen balances***
+# **Determine the mole fractions of flue gas using atomic carbon, nitrogen, oxygen, and hydrogen balances**
 # Given values
 fuel_molar_flowrate=molar_flowrate(fuel_pressure, fuel_volumetric_flowrate, R, T) / 3600 #(mol/s)
 percent_CH4 = 0.95
@@ -131,7 +127,7 @@ print(f'Flue gas mole fraction O2, N2, H2O, CO2: {y_O2_flue, y_N2_flue, y_H2O_fl
 
 
 
-#**********ENERGY BALANCE**********
+# ***ENERGY BALANCE***
 
 #variables
 T_ref=298.15 #reference temperature in kelvin
@@ -215,9 +211,6 @@ print(f'Enthalpy of fuel mixture J/mol: {H_fuel}')
 
 
 
-
-
-
 #Determine heat of combustion of fuel
 deltaHf_CO2 = -393.5E3 # value for ΔHf° of CO2 J/mol
 deltaHf_H2O = -248.1E3 # value for ΔHf° of H2O vapor J/mol
@@ -238,8 +231,6 @@ print(f'Heat of combustion of fuel J/mol: {H_combustion_fuel}')
 
 
 
-
-
 #Determine heat transfer of fuel, use equation: q_F=F*{Cp_F*(T_F – T_o) + H_cF} = F * {H_F + H_cF }
 
 #calculate fuel molar flow rate (mol/s)
@@ -256,8 +247,6 @@ F = molar_flowrate(fuel_pressure, fuel_volumetric_flowrate, R, T_fuel) #fuel mol
 
 q_F = F * (H_fuel + H_combustion_fuel)
 print(f'Heat transfer of fuel (J/s): {q_F}')
-
-
 
 
 
@@ -313,9 +302,6 @@ q_AH2O = A_H2O * ( H_AH2O + H_vap )
 #Determine heat transfer of Air stream using eqn: q_A = q_AD + q_AH2O
 q_A = q_AD + q_AH2O
 print(f'heat transfer of Air stream (J/mol): {q_A}')
-
-
-
 
 
 
@@ -471,9 +457,6 @@ plt.show()
 
 
 
-
-
-
 #******Boiler efficiency*******
 #use eqn: efficiency = molar flow water * (enthalpy hot water - enthalpy cold water) / (molar flow fuel * enthalpy combustion of fuel)
 # Assuming df contains your data
@@ -498,9 +481,6 @@ plt.title("Boiler Efficiency Comparison")
 fig.tight_layout()  # To ensure the layout is not overlapping
 plt.grid(True)
 plt.show()
-
-
-
 
 
 
