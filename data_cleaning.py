@@ -31,14 +31,12 @@ for column in df.columns:
 # drop rows that have NaN values
 df = df.dropna()
 
-# convert temperature columns from Celsius to Kelvin
-temperature_columns = [col for col in df.columns if '°C' in col]
-for col in temperature_columns:
-    df[col] = df[col] + 273.15
-    new_col_name = col.replace('°C', 'K')
-    df.rename(columns={col: new_col_name}, inplace=True)
+# calculate total gas flow rate
+total_gas_flow_rate = df["Campus Energy Centre Boiler B-2 Gas Flow Rate (m³/h)"].sum()
+print("Total Gas Flow Rate:", total_gas_flow_rate)
+print(df)
 
-# save data for boiler B-2, as well as temperature and humidity outside plant
-boiler_2_columns = [col for col in df.columns if "B-2" in col or col in ['UBC Temp (K)', 'UBC Humidity (%RH)']]
+# filter and save data for boiler B-2 along with specific temperature and humidity columns
+boiler_2_columns = [col for col in df.columns if "B-2" in col or col in ['UBC Temp (°C)', 'UBC Humidity (%RH)']]
 boiler_2_df = df[boiler_2_columns].dropna()
-boiler_2_df.to_csv('Clean_CEC_Data_B2_2021.csv')
+boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
