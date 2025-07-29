@@ -2,103 +2,100 @@ import pandas as pd
 import numpy as np
 from scipy.integrate import quad
 
-# ───── Constants ─────
-# Water Cp polynomial coefficients (J/mol·K)
-A_H2O, B_H2O, C_H2O, D_H2O = 7.243e1, 1.039e-2, -1.497e-6, 0.0
-# Standard heats of formation (J/mol)
-ΔHf_CO2  = -393.5e3
-ΔHf_H2O  = -248.1e3
-ΔHf_CH4  =  -74.6e3
-ΔHf_C2H6 =  -83.75e3
-ΔHf_O2   =      0.0
+# ----- Constants -----
+CP_COEFF_A_H2O = 7.243e1      # J/mol·K
+CP_COEFF_B_H2O = 1.039e-2
+CP_COEFF_C_H2O = -1.497e-6
+CP_COEFF_D_H2O = 0.0
 
-# Assumed fuel composition
-FRAC_CH4, FRAC_C2H6 = 0.95, 0.05
+ENTHALPY_FORMATION_CO2 = -393.5e3   # J/mol
+ENTHALPY_FORMATION_H2O = -248.1e3   
+ENTHALPY_FORMATION_CH4 =  -74.6e3   
+ENTHALPY_FORMATION_C2H6 =  -83.75e3
+ENTHALPY_FORMATION_O2  =    0.0     
 
-# Reference temperature for ΔH integration (K)
-T_REF = 298.15
+FUEL_FRACTION_CH4   = 0.95
+FUEL_FRACTION_C2H6  = 0.05
 
+REFERENCE_TEMPERATURE_K = 298.15     # K
 
-# ───── Functions ─────
-def read_data(path: str) -> pd.DataFrame:
-    return pd.read_csv(path)
+# ----- Thermo Calculations -----
 
-
-def molar_flow_water(df: pd.DataFrame) -> pd.Series:
+def integrate_cp_water(T_k: np.ndarray, T_ref: float = REFERENCE_TEMPERATURE_K) -> np.ndarray:
     """
-    Convert water flow rate (L/s) → mol/s
+    Integrate Cp(T) = A + B·T + C·T^2 + D·T^3
+    from reference temperature to each final temperature.
+    Returns delta enthalpy (J/mol).
     """
-    W_L_s = df['Campus Energy Centre Boiler B-2 Water Flow Rate (L/s)']
-    density_H2O = 1000.0   # g/L
-    MW_H2O     =   18.0    # g/mol
-    return W_L_s * density_H2O / MW_H2O
+    def cp_function(T, a, b, c, d):
+        return a + b*T + c*T**2 + d*T**3
 
-
-def integrate_cp(T_K: np.ndarray) -> np.ndarray:
-    """
-    Integrate Cp(T) = A + B·T + C·T² + D·T³
-    from T_REF to each T_K to get ΔH (J/mol).
-    """
-    def cp(T, A, B, C, D):
-        return A + B*T + C*T**2 + D*T**3
-
-    # vectorized quad
     return np.array([
-        quad(cp, T_REF, T, args=(A_H2O, B_H2O, C_H2O, D_H2O))[0]
-        for T in T_K
+        quad(cp_function, T_ref, T, 
+             args=(CP_COEFF_A_H2O, CP_COEFF_B_H2O, CP_COEFF_C_H2O, CP_COEFF_D_H2O))[0]
+        for T in T_k
     ])
 
-
-def heat_of_combustion() -> float:
+def heat_of_combustion_per_mol() -> float:
     """
-    Weighted average heat of combustion (J/mol) of the CH4/C2H6 mix.
+    Compute heat of combustion of the CH4/C2H6 mixture (J/mol).
     """
-    Hc_CH4  =  (ΔHf_CO2 + 2*ΔHf_H2O) - ΔHf_CH4    # CH4 → CO2 + 2H2O
-    Hc_C2H6 = (4*ΔHf_CO2 + 6*ΔHf_H2O) - 2*ΔHf_C2H6 # 2C2H6 → 4CO2 + 6H2O
-    return FRAC_CH4*Hc_CH4 + FRAC_C2H6*Hc_C2H6
+    # CH4 + 2 O2 -> CO2 + 2 H2O
+    heat_ch4  = ((ENTHALPY_FORMATION_CO2 + 2*ENTHALPY_FORMATION_H2O)
+                 - (ENTHALPY_FORMATION_CH4 + 2*ENTHALPY_FORMATION_O2))
+    # 2 C2H6 + 7 O2 -> 4 CO2 + 6 H2O
+    heat_c2h6 = ((4*ENTHALPY_FORMATION_CO2 + 6*ENTHALPY_FORMATION_H2O)
+                 - (2*ENTHALPY_FORMATION_C2H6 + 7*ENTHALPY_FORMATION_O2))
 
+    return abs(FUEL_FRACTION_CH4 * heat_ch4 + FUEL_FRACTION_C2H6 * heat_c2h6)
 
-def compute_efficiency(df: pd.DataFrame) -> pd.Series:
+# ----- Efficiency Calculation -----
+def compute_boiler_efficiency(df: pd.DataFrame) -> pd.Series:
     """
-    Compute boiler efficiency (%) row by row:
-      η = Q_water_out / Q_fuel_in
-        = [W·(ΔH_hw - ΔH_cw)] / [ṅ_fuel (mol/s) · H_combustion] × 100
+    Calculate boiler efficiency (%) for each row:
+      efficiency = Q_water / Q_fuel * 100
+    where:
+      Q_water = molar_flow_water * (enthalpy_hot - enthalpy_cold)
+      Q_fuel  = fuel_molar_flow_mol_s * heat_of_combustion
     """
     # 1) water molar flow (mol/s)
-    W = molar_flow_water(df)
+    water_molar_flow = df['Campus Energy Centre Boiler B-2 Water Flow Rate (L/s)']*1000.0 / 18.0
 
-    # 2) water enthalpy rises (J/mol)
-    T_in_K  = df['Campus Energy Centre Boiler B-2 Entering Water Temp (°C)'] + 273.15
-    T_out_K = df['Campus Energy Centre Boiler B-2 Leaving Water Temp (°C)']  + 273.15
-    ΔH_cw = integrate_cp(T_in_K.values)
-    ΔH_hw = integrate_cp(T_out_K.values)
+    # 2) enthalpy change of water streams (J/mol)
+    inlet_K  = df['Campus Energy Centre Boiler B-2 Entering Water Temp (K)'] 
+    outlet_K = df['Campus Energy Centre Boiler B-2 Leaving Water Temp (K)']  
+    enthalpy_cold = integrate_cp_water(inlet_K.values)
+    enthalpy_hot  = integrate_cp_water(outlet_K.values)
 
-    # 3) fuel molar flow (mol/s) — convert from the mass‑balance output (mol/h)
-    n_fuel_h = df['fuel_molar_flow_mol_h']
-    n_fuel_s = n_fuel_h / 3600.0
+    # 3) fuel molar flow in mol/s (input CSV gives mol/h)
+    fuel_mol_s = df['fuel molar flowrate (mol/h)']/3600.0
+    
 
-    # 4) fuel heating value (J/mol)
-    H_comb = heat_of_combustion()
+    # 4) heat of combustion (J/mol)
+    heating_value = heat_of_combustion_per_mol()
 
-    # 5) efficiency
-    η = W * (ΔH_hw - ΔH_cw) / (n_fuel_s * H_comb) * 100
+    # 5) compute efficiency
+    efficiency = (
+        water_molar_flow * (enthalpy_hot - enthalpy_cold)
+        / (fuel_mol_s * heating_value)
+    ) * 100.0
 
-    return η
+    return efficiency
 
 
 def main():
-    # a) load the mass‑balance‑enriched data
-    df = read_data('B2_Cleaned_Data_2021_with_mass_balance.csv')
+    # load boiler data
+    df = pd.read_csv('B2_Cleaned_Data_2021_with_mass_balance.csv')
 
-    # b) compute and append efficiency
-    df['boiler_efficiency_%'] = compute_efficiency(df)
+    # compute and append efficiency as column
+    df['boiler_efficiency_percent'] = compute_boiler_efficiency(df)
 
-    # c) save to a new file
+    # save results to new CSV
     df.to_csv(
-      'B2_Cleaned_Data_2021_with_mass_balance_and_efficiency.csv',
-      index=False
+        'B2_Cleaned_2021_MassBalance_Efficiency.csv',
+        index=False
     )
-    print("Wrote new file with boiler_efficiency_%")
+    
 
-if __name__ == '__main__':
-    main()
+
+main()
