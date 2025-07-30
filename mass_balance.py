@@ -104,7 +104,7 @@ def flue_gas_balance(fuel_n_mol_h: pd.Series,
 
 
 def main():
-    df = pd.read_csv('B2_Cleaned_Data_2021.csv')
+    df = pd.read_csv('B2_Cleaned_CEC_Data_2021.csv')
 
     # note: df['UBC Temp (°C)'] is already in Kelvin
     T_K = df['UBC Temp (K)']

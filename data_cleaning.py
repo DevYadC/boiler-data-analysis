@@ -1,42 +1,54 @@
 import pandas as pd
-import numpy as np
 from data_cleaning_utils import clean_cell_data, extract_units, check_threshold
 
-# read  CSV file
+# 1. Read CSV
 df = pd.read_csv('CEC_Data_2021.csv')
 
-# clean and convert timestamp; remove ' Rel' and set as datetime index
-df['Timestamp'] = pd.to_datetime(df['Timestamp'].str.replace(' Rel', ''), utc=True)
+# 2. Parse timestamp and set as index
+df['Timestamp'] = pd.to_datetime(
+    df['Timestamp'].str.replace(' Rel', '', regex=False),
+    utc=True
+)
 df.set_index('Timestamp', inplace=True)
 
-# rename columns to include units, from cells
-for column in df.columns:
-    first_value = df[column].dropna().iloc[0]
-    unit = extract_units(first_value)
-    new_column_name = f"{column} ({unit})"
-    df.rename(columns={column: new_column_name}, inplace=True)
+# 3. Rename columns to include units (peek at first non‑null cell)
+unit_map = {}
+for col in df.columns:
+    raw = df[col].dropna().iloc[0]
+    unit = extract_units(raw)
+    unit_map[col] = f"{col} ({unit})"
+df.rename(columns=unit_map, inplace=True)
 
-# remove units from cells, leave only numerical data
+# 4. Strip unit text from every cell, leaving only numbers
 df = df.applymap(clean_cell_data)
 
+# 5. **Convert all Celsius→Kelvin** now, before filtering
+c_cols = [col for col in df.columns if '(°C)' in col]
+# add 273.15 and then bulk‑rename
+for col in c_cols:
+    df[col] = df[col].astype(float) + 273.15
 
-# forward-fill missing data with a limit of 2 and drop remaining NaN rows
-df = df.fillna(method='ffill', limit=2)
+df.rename(
+    columns={col: col.replace('(°C)', '(K)') for col in c_cols},
+    inplace=True
+)
+
+# 6. Forward‑fill up to 2 gaps, then drop any remaining NaNs
+df = df.fillna(method='ffill', limit=2).dropna()
+
+# 7. Apply threshold‑based outlier removal **per column**
+for col in df.columns:
+    df[col] = df[col].astype(float).apply(lambda x: check_threshold(x, col))
 df = df.dropna()
 
-# apple check threshold function to each cell, removing outliers
-for column in df.columns:
-    df[column] = df.apply(lambda row: check_threshold(row[column], column), axis=1)
+# 8. Print total gas flow for Boiler B‑2
+total_gas = df["Campus Energy Centre Boiler B-2 Gas Flow Rate (m³/h)"].sum()
+print("Total Gas Flow Rate:", total_gas)
 
-# drop rows that have NaN values
-df = df.dropna()
-
-# calculate total gas flow rate
-total_gas_flow_rate = df["Campus Energy Centre Boiler B-2 Gas Flow Rate (m³/h)"].sum()
-print("Total Gas Flow Rate:", total_gas_flow_rate)
-print(df)
-
-# filter and save data for boiler B-2 along with specific temperature and humidity columns
-boiler_2_columns = [col for col in df.columns if "B-2" in col or col in ['UBC Temp (°C)', 'UBC Humidity (%RH)']]
-boiler_2_df = df[boiler_2_columns].dropna()
-boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv')
+# 9. Select B‑2 columns + Temp(K) & Humidity, then save
+boiler_2_cols = [
+    c for c in df.columns
+    if "B-2" in c or c in ["UBC Temp (K)", "UBC Humidity (%RH)"]
+]
+boiler_2_df = df[boiler_2_cols].dropna()
+boiler_2_df.to_csv('B2_Cleaned_CEC_Data_2021.csv', index=True)
